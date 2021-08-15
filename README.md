@@ -7,11 +7,9 @@ The intention is to fill the gap between online documentation that explains NGIN
 functionality and how to use it, and spending hours reading the thousands of lines
 of code to understand how NGINX actually implements things. In some ways this is
 intended to complement [NGINX's development guide](http://nginx.org/en/docs/dev/development_guide.html)
-which does explain a lot of the basic concepts, but I felt wasn't enough, especially
-if wanting to make modules or contribute to the source.
+which does explain a lot of the basic concepts, but I felt wasn't enough to understand the code.
 
-Currently this documentation is nowhere near complete, so expect gaps in coverage
-and questions for things I have not yet explored.
+I'm only documenting what I explore, so I wouldn't expect this to ever be complete.
 
 # Directory Structure
 
