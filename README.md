@@ -17,17 +17,17 @@ and questions for things I have not yet explored.
 
 See subfolders for READMEs going into more details on individual areas.
 
-* auto: shell scripts for building the source.
-* conf:
-* contrib: scripts and tooling provided by people to the NGINX project.
-* docs: source files for official documentation such as man page.
-* misc:
-* src: all the server's code written in C
-    * core: entrypoint (nginx.c), data structures and other stuff that is important to the system as a whole.
-    * event: implementations of the event loop.
-    * http: the "core" http module which is the foundation for all http features, as well
+* `auto`: shell scripts for building the source.
+* `conf`:
+* `contrib`: scripts and tooling provided by people to the NGINX project.
+* `docs`: source files for official documentation such as man page.
+* `misc`:
+* `src`: all the server's code written in C
+    * `core`: entrypoint (nginx.c), data structures and other stuff that is important to the system as a whole.
+    * `event`: implementations of the event loop.
+    * `http`: the "core" http module which is the foundation for all http features, as well
         as the source for other http modules which build on it.
-    * mail: modules implementing the mail protocols.
-    * misc:
-    * os: APIs that abstract the underlying operating system.
-    * stream: modules implementing TCP/UDP proxy support.
+    * `mail`: modules implementing the mail protocols.
+    * `misc`:
+    * `os`: APIs that abstract the underlying operating system.
+    * `stream`: modules implementing TCP/UDP proxy support.
