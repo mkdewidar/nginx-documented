@@ -15,8 +15,18 @@
 #include <nginx.h>
 
 
+/**
+ * The default value of the module's index field.
+ */
 #define NGX_MODULE_UNSET_INDEX  (ngx_uint_t) -1
 
+/**
+ * A series of macros that conditionally define strings, that will eventually be
+ * concatinated to form a compiled module's signature.
+ *
+ * The signature essentially tells us what the NGINX flags the module has been
+ * compiled with allowing us to check binary compatibility during runtime.
+ */
 
 #define NGX_MODULE_SIGNATURE_0                                                \
     ngx_value(NGX_PTR_SIZE) ","                                               \
@@ -212,13 +222,30 @@
     NGX_MODULE_SIGNATURE_33 NGX_MODULE_SIGNATURE_34
 
 
+/**
+ * Used to fill in the first few fields of a ngx_module_s object which are not
+ * supposed to be set by the module author.
+ */
 #define NGX_MODULE_V1                                                         \
     NGX_MODULE_UNSET_INDEX, NGX_MODULE_UNSET_INDEX,                           \
     NULL, 0, 0, nginx_version, NGX_MODULE_SIGNATURE
 
+/**
+ * Used to fill in the bottom few fields of a ngx_module_s object, which are
+ * also not supposed to be set by the module author.
+ */
 #define NGX_MODULE_V1_PADDING  0, 0, 0, 0, 0, 0, 0, 0
 
 
+/**
+ * The in-memory structure describing a module. Modules declare a object
+ * of this type and NGINX will use it at runtime to determine the module's
+ * behaviour.
+ *
+ * Note that not all of the fields are expected to be added by the module
+ * author, as some are for runtime use. Instead those are filled in by the
+ * NGX_MODULE_V1 and NGINX_MODULE_v1_PADDING macros.
+ */
 struct ngx_module_s {
     ngx_uint_t            ctx_index;
     ngx_uint_t            index;
@@ -237,11 +264,28 @@ struct ngx_module_s {
 
     ngx_int_t           (*init_master)(ngx_log_t *log);
 
+    /**
+     * Called in the master process when the new cycle is created, but the old
+     * (if it exists) hasn't yet been cleaned up.
+     *
+     * Return NGX_OK to indicate success, or otherwise to indicate failure.
+     */
     ngx_int_t           (*init_module)(ngx_cycle_t *cycle);
 
+    /**
+     * Called in the worker process (or single process) when just about to
+     * enter the process loop.
+     *
+     * Return NGX_ERROR to indicate an issue, otherwise success is assumed.
+     */
     ngx_int_t           (*init_process)(ngx_cycle_t *cycle);
     ngx_int_t           (*init_thread)(ngx_cycle_t *cycle);
     void                (*exit_thread)(ngx_cycle_t *cycle);
+    /**
+     * Called in the worker process (or single process) when the event loop
+     * is going to be exited. The cycle given is the one that was in use for
+     * this event loop.
+     */
     void                (*exit_process)(ngx_cycle_t *cycle);
 
     void                (*exit_master)(ngx_cycle_t *cycle);
@@ -257,9 +301,39 @@ struct ngx_module_s {
 };
 
 
+/**
+ * The context of a module of type NGX_CORE_MODULE.
+ */
 typedef struct {
     ngx_str_t             name;
+    /**
+     * Called when the cycle is created, but no user configuration has yet been
+     * parsed and gives the module the chance to return a pointer to arbitrary
+     * data which will be stored in the cycle's conf_ctx array under the index
+     * of this module. Note the new cycle is not fully created at this point,
+     * but things such as the cycle's pool are, so check ngx_init_cycle for
+     * more details if necessary.
+     *
+     * As such in the case of NGINX reloading, the implementation should expect
+     * the cycle provided to be the new one, and the old one to be accessible
+     * via the global cycle or via the reference in the new cycle.
+     *
+     * Returning NULL is considered an error. Note however that not defining
+     * a function (i.e the function pointer is NULL) is not considered an error.
+     */
     void               *(*create_conf)(ngx_cycle_t *cycle);
+    /**
+     * Called after the NGINX configuration is parsed successfully, but still
+     * the cycle creation is not complete.
+     *
+     * The cycle provided is the new one, as with create_conf.
+     *
+     * conf is the pointer that was returned by create_conf, or (should be)
+     * NULL if that hook wasn't implemented.
+     *
+     * Return NGX_CONF_ERROR to indicate an error, otherwise success will be
+     * assumed.
+     */
     char               *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 } ngx_core_module_t;
 

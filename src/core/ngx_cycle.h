@@ -36,6 +36,11 @@ struct ngx_shm_zone_s {
 };
 
 
+/**
+ * A structure holding all the runtime information of a running NGINX process.
+ * Reloading NGINX includes creating a new object and inheriting some stuff
+ * from old one.
+ */
 struct ngx_cycle_s {
     void                  ****conf_ctx;
     ngx_pool_t               *pool;
@@ -86,6 +91,9 @@ struct ngx_cycle_s {
 };
 
 
+/**
+ * All the data stored in the cycle's conf_ctx of the ngx_core_module.
+ */
 typedef struct {
     ngx_flag_t                daemon;
     ngx_flag_t                master;

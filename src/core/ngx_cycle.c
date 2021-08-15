@@ -35,6 +35,10 @@ static ngx_connection_t  dumb;
 /* STUB */
 
 
+/**
+ * Creates a new cycle by basing it as much as possible on the old_cycle
+ * provided.
+ */
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
 {
