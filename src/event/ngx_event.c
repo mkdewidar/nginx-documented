@@ -35,12 +35,18 @@ static void *ngx_event_core_create_conf(ngx_cycle_t *cycle);
 static char *ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf);
 
 
+/**
+ * The same as ngx_core_conf_t.timer_resoluton. Potentially only exists to avoid
+ * performance issues with looking up the context every iteration of the loop?
+ */
 static ngx_uint_t     ngx_timer_resolution;
 sig_atomic_t          ngx_event_timer_alarm;
 
 static ngx_uint_t     ngx_event_max_module;
 
 ngx_uint_t            ngx_event_flags;
+/* the callbacks that will be used to process events, only one module can
+process events from the event loop */
 ngx_event_actions_t   ngx_event_actions;
 
 
@@ -98,6 +104,10 @@ static ngx_core_module_t  ngx_events_module_ctx = {
 };
 
 
+/**
+ * Implements the "events" directive, which provides the basis for
+ * NGX_EVENT_MODULEs.
+ */
 ngx_module_t  ngx_events_module = {
     NGX_MODULE_V1,
     &ngx_events_module_ctx,                /* module context */
@@ -174,6 +184,9 @@ static ngx_event_module_t  ngx_event_core_module_ctx = {
 };
 
 
+/**
+ * Responsible for configuring the event poll system.
+ */
 ngx_module_t  ngx_event_core_module = {
     NGX_MODULE_V1,
     &ngx_event_core_module_ctx,            /* module context */
@@ -610,6 +623,10 @@ ngx_timer_signal_handler(int signo)
 #endif
 
 
+/**
+ * Amongst other things, this calls actions.init on the NGX_EVENT_MODULE that
+ * is in use.
+ */
 static ngx_int_t
 ngx_event_process_init(ngx_cycle_t *cycle)
 {
@@ -947,12 +964,22 @@ ngx_send_lowat(ngx_connection_t *c, size_t lowat)
 }
 
 
+/**
+ * Called when the parser has found a "events" block.
+ *
+ * We call hooks for NGX_EVENT_MODULEs, but also continue parsing the block,
+ * normally.
+ */
 static char *
 ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 {
     char                 *rv;
+    /* Our module's context that will be shared with NGX_EVENT_MODULEs.
+    Its a pointer to an array of void* bound by the max possible number
+    of event modules. Each void* belongs to one of the NGX_EVENT_MODULEs. */
     void               ***ctx;
     ngx_uint_t            i;
+    /* "parent" config, used later to keep a copy of what was given to us */
     ngx_conf_t            pcf;
     ngx_event_module_t   *m;
 
@@ -992,12 +1019,18 @@ ngx_events_block(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
     }
 
+    /* Since we will be parsing the block, we will update the config to
+    reflect that. Of course we copy the "parent" config first so we can
+    bring it back later */
+
     pcf = *cf;
     cf->ctx = ctx;
     cf->module_type = NGX_EVENT_MODULE;
     cf->cmd_type = NGX_EVENT_CONF;
 
     rv = ngx_conf_parse(cf, NULL);
+
+    /* now to make cf point to the parent config again */
 
     *cf = pcf;
 
@@ -1258,7 +1291,9 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
     int                  fd;
 #endif
     ngx_int_t            i;
+    /* a pointer the module that will process events from the loop */
     ngx_module_t        *module;
+    /* the context of the module that has been chosen */
     ngx_event_module_t  *event_module;
 
     module = NULL;
@@ -1298,6 +1333,7 @@ ngx_event_core_init_conf(ngx_cycle_t *cycle, void *conf)
 #endif
 
     if (module == NULL) {
+        /* fallback to using ourselves as the module */
         for (i = 0; cycle->modules[i]; i++) {
 
             if (cycle->modules[i]->type != NGX_EVENT_MODULE) {

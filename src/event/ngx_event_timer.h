@@ -14,6 +14,7 @@
 #include <ngx_event.h>
 
 
+/* A value used as an indication that there is no timer */
 #define NGX_TIMER_INFINITE  (ngx_msec_t) -1
 
 #define NGX_TIMER_LAZY_DELAY  300

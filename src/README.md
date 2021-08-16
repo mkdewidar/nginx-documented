@@ -51,11 +51,63 @@ parsing of the `nginx.conf` and store a pointer to arbitrary data in the
 
 ### NGX_EVENT_MODULE
 
+Context type: `ngx_event_module_t` defined in `core/ngx_event.c/h`
+
+Provided by: The `NGX_CORE_MODULE` named `events`, declared as `ngx_module_t  ngx_events_module` in `core/ngx_event.c`.
+
+These are modules that provide alternate implementations of the event poll that underlies
+NGINX's event loop.
+
+They are given hooks into the before, and after processing of the "events" block,
+and are also able to store a pointer to arbitrary data in the `events` module's
+context, similar to how `NGX_CORE_MODULE`s store their pointer in cycle's context (`ngx_cycle_t.conf_ctx`).
+
+The event loop interacts with the module each iteration via the "actions" in the
+`ngx_event_actions_t` data structure.
+
+See the [events](#events) section later for more info.
+
 ### NGX_HTTP_MODULE
 
 ### NGX_MAIL_MODULE
 
 ### NGX_STREAM_MODULE
+
+### NGX_CONF_MODULE (undocumented?)
+
+# Events
+
+NGINX operates using an event loop, similar to JavaScript.
+
+The loop itself is part of OS dependent code in `ngx_process_cycle.c`.
+Worker/single processes eventually call into `ngx_process_events_and_timers(ngx_cycle_t *cycle)` which
+leaves the actual polling for events to the `NGX_EVENT_MODULE` currently in use.
+
+How the event poll is setup:
+* Configuration stage:
+    * When the `events` block is encountered in the user's `nginx.conf`, the `events` module,
+    which is of type `NGX_CORE_MODULE` triggers callbacks for `NGX_EVENT_MODULE`s.
+    * One of the `NGX_EVENT_MODULE`s is `event_core`, which ensures that after the `events`
+    block is processed that a event loop technology (epoll, kqueue etc) has been chosen
+    for processing event loop messages. Each of these technologies have their own
+    `NGX_EVENT_MODULE` in the `event/modules` directory.
+* Processing stage:
+    * At the start of the worker/single process's lifecycle, when `ngx_module_t.init_process`
+    is called, the `event_core` module calls `ngx_event_actions_t.init` on the `NGX_EVENT_MODULE`
+    that is in use.
+    * The chosen module then configures its implementation, and sets its own actions
+    in the global `ngx_event_actions`, so that it may be called by the event loop.
+
+
+## Timers
+
+Timers are implemented using a red black tree `ngx_event_timer_rbtree` (defined in `ngx_event_timer.c`)
+where the key is the milliseconds that the the event is expected to occur.
+This means that finding what will expire next is as simple as finding
+the minimum node, aka the leftmost node. Other functions in that file provide the ability to manage those timers.
+
+At the start of each event loop, NGINX gets the most recently expired timer.
+At the end of the event loop, NGINX will expire all expired timers. Its not clear how NGINX avoids missing timers.
 
 # Next
 

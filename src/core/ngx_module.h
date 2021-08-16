@@ -248,6 +248,7 @@
  */
 struct ngx_module_s {
     ngx_uint_t            ctx_index;
+    /* The module's index in the global array of loaded modules. */
     ngx_uint_t            index;
 
     char                 *name;

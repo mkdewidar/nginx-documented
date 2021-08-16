@@ -167,6 +167,10 @@ struct ngx_event_aio_s {
 #endif
 
 
+/**
+ * Part of the NGX_EVENT_MODULE context, this defines callbacks that NGINX
+ * uses to communicate with the underlying event poll technology.
+ */
 typedef struct {
     ngx_int_t  (*add)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
     ngx_int_t  (*del)(ngx_event_t *ev, ngx_int_t event, ngx_uint_t flags);
@@ -182,6 +186,15 @@ typedef struct {
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
                                  ngx_uint_t flags);
 
+    /**
+     * Called during the initialization of the worker process, indicating that
+     * the module for whom these actions belong is chosen as the event poll
+     * implementation.
+     *
+     * Given is the current cycle, and the resolution used for timers.
+     *
+     * Returning anything other than NGX_OK is considered an error.
+     */
     ngx_int_t  (*init)(ngx_cycle_t *cycle, ngx_msec_t timer);
     void       (*done)(ngx_cycle_t *cycle);
 } ngx_event_actions_t;
@@ -432,6 +445,7 @@ extern ngx_os_io_t  ngx_io;
 
 typedef struct {
     ngx_uint_t    connections;
+    /* the ctx_index of the module handling the event poll technology chosen */
     ngx_uint_t    use;
 
     ngx_flag_t    multi_accept;
@@ -447,10 +461,37 @@ typedef struct {
 } ngx_event_conf_t;
 
 
+/**
+ * The type of context structure used for NGX_EVENT_MODULEs.
+ */
 typedef struct {
     ngx_str_t              *name;
 
+    /**
+     * Called by the events module when it encounters a "events" block, but
+     * has not yet started parsing it. Allows you to return a pointer to data
+     * that should be kept in events module's context for you.
+     *
+     * The cycle provided is that being built by the file being parsed. So once
+     * again is not fully complete but should be ready enough.
+     *
+     * Returning NULL is considered an error. Note however that not defining
+     * a function (i.e the function pointer is NULL) is not considered an error.
+     */
     void                 *(*create_conf)(ngx_cycle_t *cycle);
+    /**
+     * Called by the events module after the "events" block has been
+     * successfully parsed.
+     *
+     * The cycle provided is that being built by the file being parsed. So once
+     * again is not fully complete but should be ready enough.
+     *
+     * conf is the pointer that was returned by create_conf, or (should be)
+     * NULL if that hook wasn't implemented.
+     *
+     * Return NGX_CONF_OK to indicate success, anything else will be considered
+     * an error.
+     */
     char                 *(*init_conf)(ngx_cycle_t *cycle, void *conf);
 
     ngx_event_actions_t     actions;

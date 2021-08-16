@@ -23,11 +23,20 @@ static ngx_msec_t ngx_monotonic_time(time_t sec, ngx_uint_t msec);
 
 #define NGX_TIME_SLOTS   64
 
+/* which of the NGX_TIME_SLOTS in cached_time is the current one */
 static ngx_uint_t        slot;
 static ngx_atomic_t      ngx_time_lock;
 
+
+/* may or may not be monotonic depending on how NGINX is compiled */
 volatile ngx_msec_t      ngx_current_msec;
+/* pointer to the structure in cached_time that is the current time */
 volatile ngx_time_t     *ngx_cached_time;
+
+/**
+ * String representations of the current time in different formats.
+ */
+
 volatile ngx_str_t       ngx_cached_err_log_time;
 volatile ngx_str_t       ngx_cached_http_time;
 volatile ngx_str_t       ngx_cached_http_log_time;
@@ -44,6 +53,11 @@ volatile ngx_str_t       ngx_cached_syslog_time;
 
 static ngx_int_t         cached_gmtoff;
 #endif
+
+/**
+ * A bunch of circular buffers that store the last NGX_TIME_SLOTS worth of time
+ * updates.
+ */
 
 static ngx_time_t        cached_time[NGX_TIME_SLOTS];
 static u_char            cached_err_log_time[NGX_TIME_SLOTS]
@@ -80,11 +94,16 @@ ngx_time_init(void)
 void
 ngx_time_update(void)
 {
+    /* used to store the different serialisations of the current time */
     u_char          *p0, *p1, *p2, *p3, *p4;
+    /* stores the date and timezone information for use in creating the
+    string representations of the current time */
     ngx_tm_t         tm, gmt;
     time_t           sec;
     ngx_uint_t       msec;
+    /* what will be the currently cached time */
     ngx_time_t      *tp;
+    /* the time obtained from libc */
     struct timeval   tv;
 
     if (!ngx_trylock(&ngx_time_lock)) {
@@ -97,6 +116,10 @@ ngx_time_update(void)
     msec = tv.tv_usec / 1000;
 
     ngx_current_msec = ngx_monotonic_time(sec, msec);
+
+    /* if the time we get from the system is the same as what we already
+    have (i.e not enough time has passed) then don't bother with the rest
+    of this function */
 
     tp = &cached_time[slot];
 

@@ -10,6 +10,13 @@
 #include <ngx_event.h>
 
 
+/**
+ * A red-black tree with all scheduled events.
+ * The node key is the timestamp at which the event will fire, relative to the
+ * same epoch that NGINX uses for its own internal timekeeping.
+ * This means events are sorted by time, with the event due to expire soonest
+ * being at the leftmost of the tree.
+ */
 ngx_rbtree_t              ngx_event_timer_rbtree;
 static ngx_rbtree_node_t  ngx_event_timer_sentinel;
 
@@ -29,6 +36,13 @@ ngx_event_timer_init(ngx_log_t *log)
 }
 
 
+/**
+ * Traverses the red-black tree of timers to find the event due to expire next.
+ *
+ * Returns the epoch at which the timer is due to expire. Alternatively,
+ * NGX_TIMER_INFINITE is returned if there are no timers at all, and 0 is
+ * returned if there are timers, but none have expired,
+ */
 ngx_msec_t
 ngx_event_find_timer(void)
 {
@@ -50,6 +64,11 @@ ngx_event_find_timer(void)
 }
 
 
+/**
+ * Removes as many expired timers from the tree as can be found.
+ *
+ * Removing a timed event includes calling the handler for that event.
+ */
 void
 ngx_event_expire_timers(void)
 {
