@@ -45,8 +45,8 @@ sig_atomic_t          ngx_event_timer_alarm;
 static ngx_uint_t     ngx_event_max_module;
 
 ngx_uint_t            ngx_event_flags;
-/* the callbacks that will be used to process events, only one module can
-process events from the event loop */
+/* callbacks for interacting with the underlying event poll technology, only
+one module can process events from the event loop */
 ngx_event_actions_t   ngx_event_actions;
 
 

@@ -95,7 +95,15 @@ struct io_event {
 #endif /* NGX_TEST_BUILD_EPOLL */
 
 
+/**
+ * The runtime data kept by this module that can change between cycles.
+ */
 typedef struct {
+    /**
+     * The maximum number of events that can be processed in a given iteration
+     * this is therefore also a indication of the size of the event list we
+     * retrieve from the kernel every iteration.
+     */
     ngx_uint_t  events;
     ngx_uint_t  aio_requests;
 } ngx_epoll_conf_t;
@@ -130,13 +138,26 @@ static void ngx_epoll_eventfd_handler(ngx_event_t *ev);
 static void *ngx_epoll_create_conf(ngx_cycle_t *cycle);
 static char *ngx_epoll_init_conf(ngx_cycle_t *cycle, void *conf);
 
+/* The epoll instance */
 static int                  ep = -1;
+/* The events produced by the kernel when a file descriptor changes */
 static struct epoll_event  *event_list;
+/* a copy of ngx_epoll_conf_t.events, presumably for performance */
 static ngx_uint_t           nevents;
 
 #if (NGX_HAVE_EVENTFD)
+/**
+ * The eventfd object that is used as the notification mechanism.
+ */
 static int                  notify_fd = -1;
+/**
+ * The NGINX event generated as a result of the notification.
+ */
 static ngx_event_t          notify_event;
+/**
+ * Makes the file descriptor look like a connection like everything else NGINX
+ * deals with.
+ */
 static ngx_connection_t     notify_conn;
 #endif
 
@@ -349,6 +370,9 @@ ngx_epoll_init(ngx_cycle_t *cycle, ngx_msec_t timer)
         ngx_epoll_test_rdhup(cycle);
 #endif
     }
+
+    /* I think this is shrinking the event list for the case in which a
+    configuration reload happens and the number of events is now different */
 
     if (nevents < epcf->events) {
         if (event_list) {
@@ -834,6 +858,7 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
     }
 
     for (i = 0; i < events; i++) {
+        /* the connection object associated with this event */
         c = event_list[i].data.ptr;
 
         instance = (uintptr_t) c & 1;
@@ -853,6 +878,8 @@ ngx_epoll_process_events(ngx_cycle_t *cycle, ngx_msec_t timer, ngx_uint_t flags)
             continue;
         }
 
+        /* a bitmap from the kernel saying what happened to this file
+        descriptor */
         revents = event_list[i].events;
 
         ngx_log_debug3(NGX_LOG_DEBUG_EVENT, cycle->log, 0,

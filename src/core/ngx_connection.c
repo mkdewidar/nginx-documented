@@ -10,6 +10,9 @@
 #include <ngx_event.h>
 
 
+/**
+ * A global wrapper around all the OS functions for doing IO.
+ */
 ngx_os_io_t  ngx_io;
 
 

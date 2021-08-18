@@ -181,8 +181,40 @@ typedef struct {
     ngx_int_t  (*add_conn)(ngx_connection_t *c);
     ngx_int_t  (*del_conn)(ngx_connection_t *c, ngx_uint_t flags);
 
+    /**
+     * Allows the caller to register a callback that will be called on the next
+     * event poll.
+     *
+     * Handler is the function that would like to be called when the
+     * notification occurs.
+     *
+     * In most implementations this can only be called once per event loop,
+     * with the latest call overriding those before it. At the moment,
+     * it is basically only used by the thread pool support.
+     *
+     * Returns NGX_OK if the callback has been successfully setup.
+     */
     ngx_int_t  (*notify)(ngx_event_handler_pt handler);
 
+    /**
+     * Called within the event loop to let the event poll do its job.
+     *
+     * The cycle is the current one.
+     *
+     * timer is the epoch at which the next timer is due to expire. It is
+     * therefore a point in the future that this function should strive not
+     * to pass by too much, as any delay beyond this point means delaying the
+     * execution of all timed tasks.
+     * timer will be NGX_TIMER_INFINITE if there are no timers, so no need to
+     * return early.
+     *
+     * flags is a bitmap of extra information about what you should do when
+     * processing events. Could include:
+     * - NGX_UPDATE_TIME which means you should update the cached NGINX time
+     * -
+     *
+     * The return value is ignored.
+     */
     ngx_int_t  (*process_events)(ngx_cycle_t *cycle, ngx_msec_t timer,
                                  ngx_uint_t flags);
 

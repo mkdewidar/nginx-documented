@@ -39,6 +39,10 @@ do this by putting their data in their entry in the `ngx_cycle_t.conf_ctx` via
 the `create_conf` callback they are given access to. Other modules have other
 mechanisms.
 
+It is also common to see some data exist twice, once in the module's configuration,
+and another in a `static` variable.
+My theory so far is that this is for performance as it avoids the layer of indirection that would be required to get the value from the config object.
+
 ## Module Types
 
 ### NGX_CORE_MODULE
@@ -98,16 +102,34 @@ How the event poll is setup:
     * The chosen module then configures its implementation, and sets its own actions
     in the global `ngx_event_actions`, so that it may be called by the event loop.
 
+The contract a event polling system needs to implement is defined by `ngx_event_actions_t`.
+
+One of the first events added is that to read from the listening socket.
+This is done by the `event_core` module.
+
+## Epoll
+
+epoll == kernel API allowing monitoring of multiple file descriptors at once for read/write events
+kqueue ~= epoll for linux
+/dev/poll ~= epoll for solaris
+
+For `ngx_event_actions_t.notify` support, the epoll module uses a eventfd object, which is in essence a counter,
+exposed as a file descriptor.
+Each call to `notify` results in the counter being incremented.
+Since the eventfd object is a file descriptor, it is also being monitored by the epoll instance,
+and so the write causes a `epoll_event` to be generated for that file descriptor with the handler provided by the caller of `notify`.
 
 ## Timers
 
-Timers are implemented using a red black tree `ngx_event_timer_rbtree` (defined in `ngx_event_timer.c`)
+Timed events are implemented using a red black tree `ngx_event_timer_rbtree` (defined in `ngx_event_timer.c`)
 where the key is the milliseconds that the the event is expected to occur.
 This means that finding what will expire next is as simple as finding
 the minimum node, aka the leftmost node. Other functions in that file provide the ability to manage those timers.
 
-At the start of each event loop, NGINX gets the most recently expired timer.
-At the end of the event loop, NGINX will expire all expired timers. Its not clear how NGINX avoids missing timers.
+Before calling the event poll implementation, NGINX will find the epoch at which the
+next timer is due to expire and will pass that to the event poll implementation,
+so that it does not delay beyond that point in time and end up delaying the execution
+of timed tasks as well.
 
 # Next
 
