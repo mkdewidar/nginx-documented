@@ -48,6 +48,10 @@
 
 #define NGX_DIRECT_CONF      0x00010000
 
+/**
+ * A command type indicating that we are processing the "main" user
+ * configuration file context (i.e outside of any block directives).
+ */
 #define NGX_MAIN_CONF        0x01000000
 #define NGX_ANY_CONF         0xFF000000
 
@@ -95,6 +99,9 @@ struct ngx_open_file_s {
 };
 
 
+/**
+ * Represents a user configuration file on disk.
+ */
 typedef struct {
     ngx_file_t            file;
     ngx_buf_t            *buffer;
@@ -113,18 +120,54 @@ typedef char *(*ngx_conf_handler_pt)(ngx_conf_t *cf,
     ngx_command_t *dummy, void *conf);
 
 
+/**
+ * A structure representing all the user's configuration file, and the context
+ * needed to parse it. This is managed by the ngx_init_cycle function.
+ *
+ * This structure is self contained, such that the parser only needs it to
+ * process a user's configuration file.
+ *
+ * The fields change depending on what is being parsed at the moment.
+ */
 struct ngx_conf_s {
     char                 *name;
     ngx_array_t          *args;
 
+    /**
+     * The cycle for which these user configuration files are being parsed.
+     * This is the cycle being populated by the user's configuration.
+     */
     ngx_cycle_t          *cycle;
+    /**
+     * A reference to the cycle's pool.
+     */
     ngx_pool_t           *pool;
     ngx_pool_t           *temp_pool;
+    /**
+     * The user configuration file that is currently being parsed.
+     *
+     * In the scenario where cycle->conf_param is being parsed, the data is
+     * still provided inside this structure, but the file has no
+     * name and a NGX_INVALID_FILE file descriptor.
+     */
     ngx_conf_file_t      *conf_file;
     ngx_log_t            *log;
 
+    /**
+     * A reference to the cycle's conf_ctx.
+     */
     void                 *ctx;
+    /**
+     * The type of module that was parsing when the directive was found.
+     *
+     * Default is NGX_CORE_MODULE.
+     */
     ngx_uint_t            module_type;
+    /**
+     * The context in which this directive was found.
+     *
+     * Default is NGX_MAIN_CONF.
+     */
     ngx_uint_t            cmd_type;
 
     ngx_conf_handler_pt   handler;

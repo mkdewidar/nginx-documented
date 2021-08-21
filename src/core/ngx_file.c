@@ -17,6 +17,18 @@ ngx_atomic_t         *ngx_temp_number = &temp_number;
 ngx_atomic_int_t      ngx_random_number = 123456;
 
 
+/**
+ * If name is a absolute path, then this function doesn't have any side
+ * effects.
+ *
+ * If it isn't, then memory will be allocated from the pool, and name will be
+ * modified to point to a new string that is the prefix + name.
+ *
+ * The old string that existed in name will not be freed (it seems).
+ *
+ * Returns NGX_OK on success or NGX_ERROR if we fails to allocate memory from
+ * the pool.
+ */
 ngx_int_t
 ngx_get_full_name(ngx_pool_t *pool, ngx_str_t *prefix, ngx_str_t *name)
 {
@@ -594,6 +606,11 @@ ngx_add_path(ngx_conf_t *cf, ngx_path_t **slot)
 }
 
 
+/**
+ * Creates the directories in cycle->paths and ensures the owner is user.
+ *
+ * Returns NGX_OK on success, and NGX_ERROR otherwise.
+ */
 ngx_int_t
 ngx_create_paths(ngx_cycle_t *cycle, ngx_uid_t user)
 {

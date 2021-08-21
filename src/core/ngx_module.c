@@ -18,7 +18,14 @@ static ngx_uint_t ngx_module_ctx_index(ngx_cycle_t *cycle, ngx_uint_t type,
     ngx_uint_t index);
 
 
+/**
+ * The maximum number of modules that can be loaded by this process.
+ * This is however many statically included modules + NGX_MAX_DYNAMIC_MODULES.
+ */
 ngx_uint_t         ngx_max_module;
+/**
+ * Number of statically included modules.
+ */
 static ngx_uint_t  ngx_modules_n;
 
 

@@ -38,13 +38,45 @@ struct ngx_shm_zone_s {
 
 /**
  * A structure holding all the runtime information of a running NGINX process.
+ * There should only be one currently in use for a given process, though that
+ * cycle refers to the previously used cycle.
+ *
+ * In the case where it is a fresh start, the cycle still refers to a "previous"
+ * cycle, which is initialised with the startup options.
+ *
  * Reloading NGINX includes creating a new object and inheriting some stuff
  * from old one.
+ *
+ * Use ngx_cycle_init to initialize all the important fields before use.
  */
 struct ngx_cycle_s {
+    /**
+     * A array of void* that is used to store pointers to runtime configuration
+     * information for all modules. Modules allocate data from pools, and store
+     * the pointer to that data in this array.
+     *
+     * The index into the array is a given module's ngx_module_t.ctx_index.
+     *
+     * Use the ngx_get_conf macro to access this array.
+     *
+     * The size is bound by the maximum number of modules. So there should
+     * never be a need to re-sized.
+     */
     void                  ****conf_ctx;
+    /**
+     * The primary pool from which all memory needed for this cycle is
+     * allocated.
+     * In fact, the memory for the cycle itself is allocated from this pool.
+     *
+     * For the initial cycle, this will pretty much only include data needed
+     * while processing options, as soon afterwards a new cycle is created with
+     * its own pool that will be used for the rest of the processes' lifetime.
+     */
     ngx_pool_t               *pool;
 
+    /**
+     * The logger for this cycle.
+     */
     ngx_log_t                *log;
     ngx_log_t                 new_log;
 
@@ -54,22 +86,49 @@ struct ngx_cycle_s {
     ngx_connection_t         *free_connections;
     ngx_uint_t                free_connection_n;
 
+    /**
+     * Array of pointers to module objects for modules currently in use.
+     *
+     * Must be initialized. The size is bound by the maximum number of modules,
+     * so there should never need to be re-sized.
+     */
     ngx_module_t            **modules;
+    /**
+     * The number of modules currently in use.
+     */
     ngx_uint_t                modules_n;
     ngx_uint_t                modules_used;    /* unsigned  modules_used:1; */
 
+    /**
+     * Defaults to an empty queue.
+     */
     ngx_queue_t               reusable_connections_queue;
     ngx_uint_t                reusable_connections_n;
     time_t                    connections_reuse_time;
 
+    /**
+     * Defaults to array of capacity 10.
+     */
     ngx_array_t               listening;
+    /**
+     * Defaults to array of capacity 10.
+     */
     ngx_array_t               paths;
 
+    /**
+     * Defaults to array of capacity 1.
+     */
     ngx_array_t               config_dump;
     ngx_rbtree_t              config_dump_rbtree;
     ngx_rbtree_node_t         config_dump_sentinel;
 
+    /**
+     * Defaults to list of capacity 20.
+     */
     ngx_list_t                open_files;
+    /**
+     * Defaults to list of capacity 1.
+     */
     ngx_list_t                shared_memory;
 
     ngx_uint_t                connection_n;
@@ -79,20 +138,53 @@ struct ngx_cycle_s {
     ngx_event_t              *read_events;
     ngx_event_t              *write_events;
 
+    /**
+     * Points to the previous cycle. Even when this is a fresh start of NGINX,
+     * this still points to a cycle, but that "old_cycle" will be configured
+     * based on the options used during startup.
+     */
     ngx_cycle_t              *old_cycle;
 
+    /**
+     * The fully qualified path to the main user configuration file.
+     *
+     * Use NGX_CONF_PATH as the default value.
+     */
     ngx_str_t                 conf_file;
+    /**
+     * A string of normal NGINX configuration code that has been provided at
+     * the command line.
+     */
     ngx_str_t                 conf_param;
+    /**
+     * The same as prefix, but seemingly a new name that is more consistent with
+     * other conf_ fields in this structure. Usage in some areas of the code is
+     * hidden behind a flag NGX_CONF_PREFIX.
+     */
     ngx_str_t                 conf_prefix;
+    /**
+     * The prefix for all server files referenced in the user's configuration.
+     *
+     * Use NGX_PREFIX as the default value.
+     */
     ngx_str_t                 prefix;
+    /**
+     * Path to file specifically used for error logs.
+     *
+     * Use NGX_ERROR_LOG_PATH as the default value.
+     */
     ngx_str_t                 error_log;
     ngx_str_t                 lock_file;
+    /**
+     * The hostname is all lowercase.
+     */
     ngx_str_t                 hostname;
 };
 
 
 /**
- * All the data stored in the cycle's conf_ctx of the ngx_core_module.
+ * The runtime configuration structure for the "core" module.
+ * Populated by parsing the user's configuration and merging with defaults.
  */
 typedef struct {
     ngx_flag_t                daemon;

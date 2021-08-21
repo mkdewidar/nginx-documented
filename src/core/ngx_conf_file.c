@@ -59,6 +59,9 @@ static ngx_uint_t argument_number[] = {
 };
 
 
+/**
+ * Sets up the cf and parses cf->cycle->conf_param.
+ */
 char *
 ngx_conf_param(ngx_conf_t *cf)
 {
@@ -883,6 +886,11 @@ ngx_conf_include(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 }
 
 
+/**
+ * A wrapper around ngx_get_full_name that uses a different cycle prefix.
+ * If conf_prefix is truthy, then it will use cycle->conf_prefix, otherwise
+ * cycle->prefix will be used.
+ */
 ngx_int_t
 ngx_conf_full_name(ngx_cycle_t *cycle, ngx_str_t *name, ngx_uint_t conf_prefix)
 {

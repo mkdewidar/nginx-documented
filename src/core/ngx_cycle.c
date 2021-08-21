@@ -36,8 +36,27 @@ static ngx_connection_t  dumb;
 
 
 /**
- * Creates a new cycle by basing it as much as possible on the old_cycle
- * provided.
+ * Creates a new cycle based on the settings of "old_cycle".
+ * The "old_cycle" must have the following fields set to acceptable values (
+ * see ngx_cycle_t documentation for what that would be):
+ * - log
+ * - conf_prefix
+ * - prefix
+ * - error_log
+ * - conf_param
+ *
+ * The new cycle obtains its own copies of these except for log, where the
+ * object is re-used.
+ *
+ * In some sense, those fields mentioned above can be considered as required
+ * constructor parameters for the type ngx_cycle_t.
+ *
+ * Everything else can be set to 0 to indicate it shouldn't be inherited/
+ * re-used, or if it is set to a particular value, that will be re-used where
+ * possible.
+ *
+ * Other side effects of this function include updating the cached time and
+ * timezone information.
  */
 ngx_cycle_t *
 ngx_init_cycle(ngx_cycle_t *old_cycle)
